@@ -1,0 +1,2290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>SnapCoach — Camera settings for any scene</title>
+<style>
+  :root {
+    --bg: #0e0e10;
+    --bg-2: #1a1a1f;
+    --card: #1f1f25;
+    --card-hover: #26262d;
+    --text: #f4f4f6;
+    --text-dim: #9b9ba3;
+    --accent: #ffd166;
+    --accent-2: #ef476f;
+    --good: #6ee7b7;
+    --border: #2a2a32;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", system-ui, sans-serif;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+  .app {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 20px 16px 80px;
+  }
+  header {
+    text-align: center;
+    padding: 16px 0 24px;
+  }
+  header h1 {
+    margin: 0;
+    font-size: 28px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+  }
+  header h1 .dot { color: var(--accent); }
+  header p {
+    margin: 6px 0 0;
+    color: var(--text-dim);
+    font-size: 14px;
+  }
+  .stage {
+    background: var(--card);
+    border-radius: 20px;
+    padding: 18px;
+    margin-bottom: 16px;
+    border: 1px solid var(--border);
+  }
+  .preview-wrap {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 4/3;
+    background: var(--bg-2);
+    border-radius: 14px;
+    overflow: hidden;
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .preview-wrap.empty::before {
+    content: "📷";
+    font-size: 56px;
+    opacity: 0.25;
+  }
+  #previewImg, #videoEl {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: none;
+  }
+  #previewImg.show, #videoEl.show { display: block; }
+  .controls {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .controls.three { grid-template-columns: repeat(3, 1fr); }
+  button {
+    font-family: inherit;
+    font-size: 15px;
+    font-weight: 600;
+    border: none;
+    border-radius: 12px;
+    padding: 14px 12px;
+    cursor: pointer;
+    background: var(--bg-2);
+    color: var(--text);
+    transition: transform 0.05s, background 0.15s;
+    border: 1px solid var(--border);
+  }
+  button:active { transform: scale(0.97); }
+  button.primary {
+    background: var(--accent);
+    color: #1a1a1a;
+    border-color: var(--accent);
+  }
+  button.danger {
+    background: var(--accent-2);
+    color: white;
+    border-color: var(--accent-2);
+  }
+  button .ico { margin-right: 6px; }
+  .scene-section h3, .results h3 {
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-dim);
+    margin: 18px 0 10px;
+    font-weight: 700;
+  }
+  .scene-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .chip {
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 10px 14px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+    user-select: none;
+  }
+  .chip:active { transform: scale(0.96); }
+  .chip.active {
+    background: var(--accent);
+    color: #1a1a1a;
+    border-color: var(--accent);
+    font-weight: 700;
+  }
+  .chip.suggested {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 1px var(--accent) inset;
+  }
+  .chip .sparkle {
+    color: var(--accent);
+    font-size: 11px;
+    margin-left: 4px;
+  }
+  .chip.active .sparkle { color: #1a1a1a; }
+
+  .auto-banner {
+    background: linear-gradient(135deg, rgba(255,209,102,0.12), rgba(239,71,111,0.08));
+    border: 1px solid rgba(255,209,102,0.3);
+    border-radius: 12px;
+    padding: 12px 14px;
+    margin: 14px 0 0;
+    font-size: 13px;
+    color: var(--text);
+    display: none;
+  }
+  .auto-banner.show { display: block; }
+  .auto-banner b { color: var(--accent); }
+
+  .results {
+    display: none;
+  }
+  .results.show { display: block; }
+
+  .scene-headline {
+    background: linear-gradient(135deg, rgba(110,231,183,0.1), rgba(255,209,102,0.06));
+    border: 1px solid rgba(110,231,183,0.25);
+    border-radius: 16px;
+    padding: 16px;
+    margin-bottom: 14px;
+  }
+  .scene-headline .title {
+    font-size: 20px;
+    font-weight: 800;
+    margin: 0 0 4px;
+  }
+  .scene-headline .subtitle {
+    font-size: 14px;
+    color: var(--text-dim);
+    margin: 0;
+  }
+
+  .device-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 16px;
+    margin-bottom: 12px;
+  }
+  .device-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+  .device-header .icon {
+    width: 36px;
+    height: 36px;
+    background: var(--bg-2);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+  }
+  .device-header h4 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 800;
+  }
+  .device-header .tag {
+    font-size: 11px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .setting-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+    gap: 12px;
+  }
+  .setting-row:last-child { border-bottom: none; }
+  .setting-row .label {
+    font-size: 14px;
+    color: var(--text-dim);
+    flex-shrink: 0;
+  }
+  .setting-row .value {
+    font-size: 15px;
+    font-weight: 700;
+    text-align: right;
+    color: var(--text);
+  }
+  .setting-row .value .accent { color: var(--accent); }
+
+  .tip-list {
+    margin: 8px 0 0;
+    padding: 0;
+    list-style: none;
+  }
+  .tip-list li {
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--text);
+    display: flex;
+    gap: 10px;
+  }
+  .tip-list li:last-child { border-bottom: none; }
+  .tip-list li::before {
+    content: "›";
+    color: var(--accent);
+    font-weight: 800;
+    flex-shrink: 0;
+  }
+
+  .why-toggle {
+    background: transparent;
+    border: 1px dashed var(--border);
+    color: var(--text-dim);
+    width: 100%;
+    margin-top: 12px;
+    font-size: 13px;
+  }
+  .why-box {
+    display: none;
+    margin-top: 12px;
+    padding: 12px 14px;
+    background: var(--bg-2);
+    border-radius: 12px;
+    font-size: 13px;
+    line-height: 1.55;
+    color: var(--text);
+    border-left: 3px solid var(--accent);
+  }
+  .why-box.show { display: block; }
+  .why-box b { color: var(--accent); }
+
+  .footer {
+    text-align: center;
+    margin-top: 24px;
+    color: var(--text-dim);
+    font-size: 12px;
+  }
+
+  .reset-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    width: 100%;
+    margin-top: 12px;
+    font-weight: 500;
+  }
+
+  /* Insights panel */
+  .insights {
+    margin-top: 14px;
+    display: none;
+  }
+  .insights.show { display: block; }
+  .insights-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  .insights-header h3 {
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-dim);
+    margin: 0;
+    font-weight: 700;
+  }
+  .live-dot {
+    display: inline-block;
+    width: 8px; height: 8px;
+    background: var(--good);
+    border-radius: 50%;
+    margin-right: 6px;
+    animation: pulse 1.5s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+  #loadingOverlay.show { display: flex !important; }
+  .insight {
+    display: flex;
+    gap: 12px;
+    padding: 12px;
+    background: var(--bg-2);
+    border-radius: 12px;
+    margin-bottom: 8px;
+    border-left: 3px solid var(--text-dim);
+    align-items: flex-start;
+  }
+  .insight.info { border-left-color: #60a5fa; }
+  .insight.warn { border-left-color: var(--accent); background: rgba(255,209,102,0.05); }
+  .insight.critical { border-left-color: var(--accent-2); background: rgba(239,71,111,0.06); }
+  .insight .ico {
+    font-size: 20px;
+    line-height: 1;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+  .insight .body {
+    flex: 1;
+    min-width: 0;
+  }
+  .insight .body .ttl {
+    font-weight: 700;
+    font-size: 14px;
+    margin: 0 0 3px;
+    line-height: 1.3;
+  }
+  .insight .body .msg {
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--text);
+    opacity: 0.92;
+  }
+  .insight .body .msg b { color: var(--accent); font-weight: 700; }
+  .insights-empty {
+    text-align: center;
+    padding: 16px;
+    color: var(--text-dim);
+    font-size: 13px;
+    background: var(--bg-2);
+    border-radius: 12px;
+  }
+
+  /* Gear pill in header */
+  .gear-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin: 12px auto 0;
+    padding: 8px 14px;
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    user-select: none;
+  }
+  .gear-pill:active { transform: scale(0.97); }
+  .gear-pill .pencil { color: var(--accent); font-size: 11px; }
+  .gear-pill .sep { color: var(--text-dim); opacity: 0.5; }
+
+  /* Modal overlay */
+  .modal-backdrop {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.75);
+    backdrop-filter: blur(6px);
+    z-index: 100;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .modal-backdrop.show { display: flex; }
+  .modal {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 24px;
+    width: 100%;
+    max-width: 440px;
+    max-height: 85vh;
+    overflow-y: auto;
+  }
+  .modal h2 {
+    margin: 0 0 4px;
+    font-size: 22px;
+    font-weight: 800;
+  }
+  .modal p {
+    margin: 0 0 18px;
+    color: var(--text-dim);
+    font-size: 14px;
+  }
+  .modal-section {
+    margin-bottom: 18px;
+  }
+  .modal-section label {
+    display: block;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-dim);
+    margin-bottom: 8px;
+    font-weight: 700;
+  }
+  .device-options {
+    display: grid;
+    gap: 8px;
+  }
+  .device-option {
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px 14px;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: all 0.15s;
+  }
+  .device-option:active { transform: scale(0.98); }
+  .device-option.selected {
+    border-color: var(--accent);
+    background: rgba(255,209,102,0.08);
+    box-shadow: 0 0 0 1px var(--accent) inset;
+  }
+  .device-option .name {
+    font-weight: 700;
+    font-size: 15px;
+  }
+  .device-option .status {
+    font-size: 11px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .device-option.tuned .status { color: var(--good); }
+  .device-option.coming-soon { opacity: 0.55; }
+  .modal-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 8px;
+  }
+  .modal-actions button { flex: 1; }
+
+  @media (max-width: 380px) {
+    header h1 { font-size: 24px; }
+    .chip { padding: 8px 12px; font-size: 13px; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>SnapCoach<span class="dot">.</span></h1>
+    <p>Show me your scene — I'll dial in the settings.</p>
+    <div class="gear-pill" id="gearPill" onclick="openDevicePicker()">
+      <span id="gearPhone">iPhone 14</span>
+      <span class="sep">·</span>
+      <span id="gearCamera">Canon EOS 80D</span>
+      <span class="pencil">✎</span>
+    </div>
+  </header>
+
+  <!-- Device picker modal -->
+  <div class="modal-backdrop" id="deviceModal">
+    <div class="modal">
+      <h2>📷 Your gear</h2>
+      <p>Settings are tailored to the exact phone &amp; camera you're shooting with.</p>
+
+      <div class="modal-section">
+        <label>📱 Phone</label>
+        <div class="device-options" id="phoneOptions"></div>
+      </div>
+
+      <div class="modal-section">
+        <label>📷 Camera</label>
+        <div class="device-options" id="cameraOptions"></div>
+      </div>
+
+      <div class="modal-actions">
+        <button class="primary" onclick="confirmDevices()">Save & continue</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="stage">
+    <div class="preview-wrap empty" id="previewWrap">
+      <img id="previewImg" alt="">
+      <video id="videoEl" autoplay playsinline muted></video>
+      <div id="uploadError" style="display:none;position:absolute;inset:0;padding:24px;background:rgba(14,14,16,0.95);color:var(--text);font-size:14px;line-height:1.5;overflow-y:auto;border-radius:14px;">
+        <div style="font-size:32px;margin-bottom:10px;">⚠️</div>
+        <div id="uploadErrorBody"></div>
+        <button onclick="dismissUploadError()" style="margin-top:14px;padding:10px 16px;background:var(--accent);color:#1a1a1a;border:none;border-radius:10px;font-weight:700;cursor:pointer;">OK, got it</button>
+      </div>
+      <div id="loadingOverlay" style="display:none;position:absolute;inset:0;background:rgba(14,14,16,0.85);color:var(--text);align-items:center;justify-content:center;flex-direction:column;gap:12px;border-radius:14px;">
+        <div style="width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin 0.9s linear infinite;"></div>
+        <div id="loadingText" style="font-size:14px;color:var(--text-dim);">Reading photo…</div>
+      </div>
+    </div>
+
+    <div class="controls" id="initialControls">
+      <button class="primary" id="cameraBtn">
+        <span class="ico">📸</span> Open camera
+      </button>
+      <button id="uploadBtn">
+        <span class="ico">🖼️</span> Upload photo
+      </button>
+    </div>
+    <div class="controls three" id="liveControls" style="display:none;">
+      <button class="primary" id="snapBtn">
+        <span class="ico">⚡</span> Snap
+      </button>
+      <button id="flipBtn">
+        <span class="ico">🔄</span> Flip
+      </button>
+      <button class="danger" id="cancelCamBtn">
+        <span class="ico">✕</span> Close
+      </button>
+    </div>
+
+    <input type="file" id="fileInput" accept="image/*,.cr2,.heic,.heif" style="display:none;">
+
+    <div class="auto-banner" id="autoBanner">
+      <b>Auto-analyzed:</b> <span id="autoText"></span>
+    </div>
+
+    <!-- Live insights -->
+    <div class="insights" id="insightsPanel">
+      <div class="insights-header">
+        <h3 id="insightsTitle">What I see</h3>
+        <span id="liveBadge" style="display:none;font-size:11px;color:var(--good);font-weight:700;">
+          <span class="live-dot"></span>LIVE
+        </span>
+      </div>
+      <div id="insightsList"></div>
+    </div>
+
+    <div class="scene-section">
+      <h3>Or pick the scene</h3>
+      <div class="scene-chips" id="sceneChips"></div>
+    </div>
+  </div>
+
+  <div class="results" id="results">
+    <div class="scene-headline">
+      <p class="title" id="sceneTitle"></p>
+      <p class="subtitle" id="sceneSubtitle"></p>
+    </div>
+
+    <div class="device-card">
+      <div class="device-header">
+        <div class="icon">📱</div>
+        <div>
+          <h4 id="phoneCardTitle">iPhone 14</h4>
+          <span class="tag" id="phoneCardSubtitle">Built-in Camera app</span>
+        </div>
+      </div>
+      <div id="phoneBetaNote" style="display:none;background:rgba(255,209,102,0.08);border:1px solid rgba(255,209,102,0.3);border-radius:10px;padding:10px 12px;margin-bottom:10px;font-size:12px;color:var(--text-dim);"></div>
+      <div class="setting-row">
+        <span class="label">Mode</span>
+        <span class="value" id="iphoneMode"></span>
+      </div>
+      <ul class="tip-list" id="iphoneTips"></ul>
+    </div>
+
+    <div class="device-card">
+      <div class="device-header">
+        <div class="icon">📷</div>
+        <div>
+          <h4 id="cameraCardTitle">Canon EOS 80D</h4>
+          <span class="tag" id="cameraCardSubtitle">DSLR — manual-friendly</span>
+        </div>
+      </div>
+      <div id="cameraBetaNote" style="display:none;background:rgba(255,209,102,0.08);border:1px solid rgba(255,209,102,0.3);border-radius:10px;padding:10px 12px;margin-bottom:10px;font-size:12px;color:var(--text-dim);"></div>
+      <div id="canonSettings"></div>
+      <button class="why-toggle" onclick="document.getElementById('whyBox').classList.toggle('show')">
+        ▸ Why these settings?
+      </button>
+      <div class="why-box" id="whyBox"></div>
+    </div>
+
+    <button class="reset-btn" id="resetBtn">Start over</button>
+  </div>
+
+  <p class="footer">Beta v0.1 · Tap a scene anytime to switch</p>
+</div>
+
+<script>
+/* ============================================================
+   SCENE DATABASE
+   Each scene has plain-English iPhone tips + Canon 80D settings
+   ============================================================ */
+const SCENES = {
+  portrait: {
+    name: "Portrait",
+    icon: "👤",
+    subtitle: "One person, sharp face, dreamy blurred background.",
+    iphone: {
+      mode: "Portrait mode",
+      tips: [
+        "Tap the face to lock focus and exposure.",
+        "Slide the little sun icon down a touch for natural skin tones.",
+        "iPhone 14 only has the 1x lens for Portrait — stand 4–6 ft away for flattering proportions (don't get too close)."
+      ]
+    },
+    canon: {
+      mode: "Av (Aperture Priority)",
+      aperture: "f/2.8 – f/4",
+      shutter: "Auto (camera picks)",
+      iso: "100 – 400",
+      wb: "AWB or Daylight",
+      focus: "One Shot AF · single point on the eye",
+      meter: "Evaluative",
+      drive: "Single shot"
+    },
+    why: "A <b>wide aperture</b> (low f-number like f/2.8) is the magic ingredient — it throws the background out of focus and makes your subject pop. Keeping ISO low keeps skin smooth and grain-free. Aperture Priority lets you control depth while the camera handles shutter speed."
+  },
+
+  group: {
+    name: "Group",
+    icon: "👥",
+    subtitle: "Multiple people — everyone in focus, no one blurry.",
+    iphone: {
+      mode: "Photo (not Portrait)",
+      tips: [
+        "Step back rather than zooming in — keeps everyone in focus.",
+        "Tap on a face in the middle of the group to set focus.",
+        "Watch for HDR auto-kicking in if backlit; it usually helps."
+      ]
+    },
+    canon: {
+      mode: "Av (Aperture Priority)",
+      aperture: "f/5.6 – f/8",
+      shutter: "Auto, but keep above 1/125s",
+      iso: "200 – 800",
+      wb: "AWB",
+      focus: "One Shot AF · zone AF",
+      meter: "Evaluative",
+      drive: "Burst (in case of blinks)"
+    },
+    why: "A <b>narrower aperture</b> (f/5.6+) gives enough depth of field that everyone is sharp, even if they're not all on the exact same line. Burst mode is your friend — someone always blinks."
+  },
+
+  landscape: {
+    name: "Landscape",
+    icon: "🏞️",
+    subtitle: "Big vista, mountains, foreground to horizon all sharp.",
+    iphone: {
+      mode: "Photo · 0.5x ultra-wide",
+      tips: [
+        "Tap on something in the middle distance to set focus.",
+        "Drop exposure slightly if the sky looks white/blown-out.",
+        "Turn on the grid (Settings → Camera) and put the horizon on a third."
+      ]
+    },
+    canon: {
+      mode: "Av (Aperture Priority)",
+      aperture: "f/8 – f/11",
+      shutter: "Auto (tripod if below 1/60s)",
+      iso: "100",
+      wb: "Daylight",
+      focus: "One Shot AF · roughly 1/3 into the scene",
+      meter: "Evaluative",
+      drive: "Single shot"
+    },
+    why: "<b>f/8–f/11</b> is the sharpness sweet spot for most lenses, and gives front-to-back focus. ISO 100 keeps the image crisp and clean for big prints. Daylight white balance protects warm golden tones from getting neutralized."
+  },
+
+  sunset: {
+    name: "Sunset / Sunrise",
+    icon: "🌅",
+    subtitle: "Warm golden light, glowing sky, silhouettes.",
+    iphone: {
+      mode: "Photo",
+      tips: [
+        "Tap the sky to expose for it — the foreground will silhouette.",
+        "Slide exposure down to keep colors rich, not washed out.",
+        "Shoot a few seconds apart — sunset color changes fast."
+      ]
+    },
+    canon: {
+      mode: "Av (Aperture Priority)",
+      aperture: "f/8",
+      shutter: "Auto",
+      iso: "100 – 200",
+      wb: "Cloudy or Shade (boosts warmth)",
+      focus: "One Shot AF · on the horizon",
+      meter: "Spot or Center-weighted (meter the sky)",
+      drive: "Single shot"
+    },
+    why: "Setting white balance to <b>Cloudy</b> or <b>Shade</b> tells the camera the light is cool, so it warms the image — making oranges and pinks really sing. Spot-metering the sky keeps the sky exposed correctly and turns foreground into silhouette."
+  },
+
+  lowlight: {
+    name: "Low Light",
+    icon: "🌙",
+    subtitle: "Dim indoor light, evening street, candle-lit.",
+    iphone: {
+      mode: "Night mode (turns on automatically)",
+      tips: [
+        "HOLD STILL — Night mode takes a 1–3 second exposure.",
+        "Brace against a wall, doorframe, or table for sharpness.",
+        "Tap your subject and pull exposure down slightly if it looks too bright."
+      ]
+    },
+    canon: {
+      mode: "Av or Manual",
+      aperture: "f/2.8 (or widest your lens opens)",
+      shutter: "1/60s minimum handheld",
+      iso: "1600 – 3200",
+      wb: "AWB or Tungsten if very orange",
+      focus: "One Shot AF · single point on subject",
+      meter: "Evaluative",
+      drive: "Single shot"
+    },
+    why: "In low light, you trade between three things: <b>open aperture</b> to let in light, <b>slower shutter</b> (but not too slow or you get blur), and <b>higher ISO</b> (which adds grain). The 80D handles ISO 3200 well. Don't go below 1/60s handheld."
+  },
+
+  action: {
+    name: "Action / Sports",
+    icon: "🏃",
+    subtitle: "Moving subjects — kids running, sports, cars.",
+    iphone: {
+      mode: "Photo with Burst (hold shutter)",
+      tips: [
+        "Hold down the shutter button to fire a burst.",
+        "Tap and HOLD on your subject to lock AE/AF focus.",
+        "Bright light is your friend — shoot outdoors or near windows."
+      ]
+    },
+    canon: {
+      mode: "Tv (Shutter Priority)",
+      aperture: "Auto (camera picks)",
+      shutter: "1/500s – 1/1000s (or faster)",
+      iso: "400 – 1600 (let it climb)",
+      wb: "AWB",
+      focus: "AI Servo AF · zone or expanded single point",
+      meter: "Evaluative",
+      drive: "Continuous (burst)"
+    },
+    why: "<b>Fast shutter freezes motion.</b> 1/500s stops most action; 1/1000s+ for fast sports or birds. <b>AI Servo</b> tracks moving subjects continuously. Don't be afraid of high ISO — a slightly grainy sharp shot beats a clean blurry one."
+  },
+
+  pets: {
+    name: "Pets / Kids",
+    icon: "🐶",
+    subtitle: "Cute, fast, unpredictable subjects.",
+    iphone: {
+      mode: "Burst (hold shutter) or Live Photo",
+      tips: [
+        "Get down to their eye level — every time.",
+        "Hold the shutter for burst, then pick the best frame.",
+        "Use treats or noises to get their attention right before the shot."
+      ]
+    },
+    canon: {
+      mode: "Av or Tv",
+      aperture: "f/4 – f/5.6",
+      shutter: "1/400s minimum",
+      iso: "400 – 1600",
+      wb: "AWB",
+      focus: "AI Servo AF · single point on the eye",
+      meter: "Evaluative",
+      drive: "Continuous (burst)"
+    },
+    why: "Kids and pets don't sit still. A <b>shutter speed of at least 1/400s</b> stops fidgety motion. <b>AI Servo</b> keeps refocusing as they move toward or away from you. Burst mode lets you fish out the one where the eyes are open and the smile is real."
+  },
+
+  macro: {
+    name: "Macro / Close-up",
+    icon: "🌸",
+    subtitle: "Tiny details — flowers, insects, food close-up.",
+    iphone: {
+      mode: "Photo (heads up — iPhone 14 has NO macro mode)",
+      tips: [
+        "iPhone 14 can't focus closer than ~4 inches — back up to that minimum distance, then crop in.",
+        "Try shooting at 0.5x ultra-wide and getting close — it gives a near-macro feel and the ultra-wide focuses a bit closer.",
+        "Use a lamp or window light — natural light beats flash for tiny things."
+      ]
+    },
+    canon: {
+      mode: "Av (Aperture Priority) or Manual",
+      aperture: "f/8 – f/11",
+      shutter: "1/125s or faster (handheld)",
+      iso: "200 – 800",
+      wb: "AWB or Daylight",
+      focus: "Manual focus, or One Shot AF · single point",
+      meter: "Evaluative",
+      drive: "Single shot · use 2s self-timer"
+    },
+    why: "Up close, <b>depth of field is razor-thin</b>, so f/8–f/11 helps you actually get the whole bug or flower sharp. Even tiny camera shake shows up — keep shutter speed up, or rest the camera on something. Manual focus is often more reliable than autofocus this close."
+  },
+
+  food: {
+    name: "Food",
+    icon: "🍽️",
+    subtitle: "Plates, drinks, baking — make it look delicious.",
+    iphone: {
+      mode: "Photo",
+      tips: [
+        "Shoot near a window — natural light, never overhead restaurant light.",
+        "Try a top-down shot OR a 45° angle — pick one and commit.",
+        "Tap the food (not the table) to focus; pull exposure down for moodier look."
+      ]
+    },
+    canon: {
+      mode: "Av (Aperture Priority)",
+      aperture: "f/4 – f/5.6",
+      shutter: "Auto (1/60s or faster)",
+      iso: "200 – 800",
+      wb: "AWB or Daylight",
+      focus: "One Shot AF · single point on hero element",
+      meter: "Evaluative",
+      drive: "Single shot"
+    },
+    why: "f/4 gives a touch of background blur to isolate the dish without losing detail across the plate. <b>Natural light</b> matters more than any camera setting for food — yellow restaurant light makes everything look sad."
+  },
+
+  night: {
+    name: "Night Sky / Stars",
+    icon: "✨",
+    subtitle: "Stars, Milky Way, astrophotography.",
+    iphone: {
+      mode: "Night mode (max duration, on tripod)",
+      tips: [
+        "USE A TRIPOD — Night mode will offer up to 30s exposure on tripod.",
+        "Turn off all phone notifications/screen so you don't bump it.",
+        "Aim away from city lights; let your eyes adjust 10 min first."
+      ]
+    },
+    canon: {
+      mode: "Manual (M)",
+      aperture: "f/2.8 (widest you have)",
+      shutter: "15 – 25 seconds",
+      iso: "1600 – 3200",
+      wb: "Tungsten (~3200K) for cool blue tones",
+      focus: "Manual focus to infinity (focus on a far light first)",
+      meter: "N/A · use histogram",
+      drive: "Single shot · 2s self-timer or remote"
+    },
+    why: "Stars are faint, so you need every photon: <b>wide aperture, slow shutter, high ISO</b>. Don't go past ~25 seconds or stars become streaks (Earth rotates). Tungsten WB gives the deep blue night-sky color that looks cinematic."
+  },
+
+  concert: {
+    name: "Concert / Stage",
+    icon: "🎤",
+    subtitle: "Dim venue, bright stage lights, performers moving.",
+    iphone: {
+      mode: "Photo",
+      tips: [
+        "Tap and HOLD on the performer to lock focus and exposure.",
+        "Slide exposure DOWN — stage lights blow out faces easily.",
+        "Don't use flash — useless past 6 feet and annoys everyone."
+      ]
+    },
+    canon: {
+      mode: "Tv (Shutter Priority) or Manual",
+      aperture: "f/2.8 (widest)",
+      shutter: "1/200s – 1/400s",
+      iso: "1600 – 6400",
+      wb: "AWB (concert lights shift constantly)",
+      focus: "AI Servo AF · single point on the face",
+      meter: "Spot (meter the lit face)",
+      drive: "Continuous (burst)"
+    },
+    why: "Mixed dim + bright stage light is brutal. <b>Spot-meter the face</b> so it exposes correctly even with a dark crowd behind. Fast shutter to freeze movement, wide aperture to grab light, ISO as high as needed — concerts forgive grain but not blur."
+  },
+
+  architecture: {
+    name: "Architecture",
+    icon: "🏛️",
+    subtitle: "Buildings, interiors, straight lines.",
+    iphone: {
+      mode: "Photo · 0.5x for tall buildings",
+      tips: [
+        "Turn on the grid AND the level (Settings → Camera → Grid).",
+        "Stand far back and use the wide lens — less distortion than getting close.",
+        "Shoot at golden hour or blue hour for the most dramatic light."
+      ]
+    },
+    canon: {
+      mode: "Av (Aperture Priority)",
+      aperture: "f/8 – f/11",
+      shutter: "Auto (tripod if dim)",
+      iso: "100 – 400",
+      wb: "Daylight (or Tungsten for interiors)",
+      focus: "One Shot AF · single point on building",
+      meter: "Evaluative",
+      drive: "Single shot"
+    },
+    why: "<b>f/8–f/11</b> for edge-to-edge sharpness. ISO 100 for clean detail in stone and brick. Daylight WB preserves the natural color of the building rather than auto-correcting to a flat neutral. A tripod becomes essential indoors or at twilight."
+  },
+
+  waterfall: {
+    name: "Waterfall / Motion blur",
+    icon: "💧",
+    subtitle: "Silky water, light trails, motion as art.",
+    iphone: {
+      mode: "Live Photo → swipe up → Long Exposure",
+      tips: [
+        "Tap Live Photo icon (target with circles) before shooting.",
+        "Brace the phone — even small shake ruins long exposure.",
+        "Open the photo in Photos app, swipe up, pick 'Long Exposure'."
+      ]
+    },
+    canon: {
+      mode: "Tv (Shutter Priority) or Manual",
+      aperture: "f/11 – f/16",
+      shutter: "1/4s – 2 seconds",
+      iso: "100",
+      wb: "Daylight",
+      focus: "One Shot AF · single point",
+      meter: "Evaluative",
+      drive: "Single shot · 2s self-timer",
+      extra: "ND filter recommended in daylight"
+    },
+    why: "Slow shutter is what turns water into silk. You need to <b>cut light</b> to use slow shutter in daylight — narrow aperture (f/16), ISO 100, and ideally a neutral-density (ND) filter that acts like sunglasses for your lens. A tripod is non-negotiable."
+  },
+
+  beach: {
+    name: "Beach / Ocean",
+    icon: "🏖️",
+    subtitle: "Bright sand, blue water, harsh midday sun.",
+    iphone: {
+      mode: "Photo",
+      tips: [
+        "Tap on a person's face (not the sand or sky) to expose properly.",
+        "Slide exposure DOWN — sand and water reflect a ton of light.",
+        "Shoot early morning or late afternoon if you can; harsh noon light is unflattering."
+      ]
+    },
+    canon: {
+      mode: "Av (Aperture Priority)",
+      aperture: "f/8 – f/11",
+      shutter: "Auto (will be fast — 1/500s+)",
+      iso: "100",
+      wb: "Daylight",
+      focus: "One Shot AF · single point",
+      meter: "Evaluative · dial in -2/3 to -1 exposure compensation",
+      drive: "Single shot",
+      extra: "Polarizing filter cuts glare on water dramatically"
+    },
+    why: "Beaches fool meters into <b>underexposing</b> because bright sand looks like white snow to the camera. Dial in <b>-1 exposure compensation</b> so faces don't go gray. A <b>circular polarizer</b> kills reflections on the water and makes the sky a deeper blue — single biggest upgrade for beach shots."
+  },
+
+  underwater: {
+    name: "Underwater / Coral",
+    icon: "🐠",
+    subtitle: "Snorkeling, reef life, swimming pools.",
+    iphone: {
+      mode: "Photo (with waterproof case)",
+      tips: [
+        "iPhone is NOT waterproof past splash — use a proper case rated 30m+.",
+        "Get close — water eats contrast and color fast past 3 feet.",
+        "Aim slightly upward so colorful subjects are lit by the sun from behind you."
+      ]
+    },
+    canon: {
+      mode: "Av or Manual",
+      aperture: "f/5.6 – f/8",
+      shutter: "1/250s minimum (fish move)",
+      iso: "400 – 1600",
+      wb: "Underwater preset, or Custom WB on a white slate",
+      focus: "AI Servo AF · single point on the eye",
+      meter: "Evaluative",
+      drive: "Continuous (burst)",
+      extra: "DSLR needs a dedicated underwater housing — Ikelite or similar"
+    },
+    why: "Water absorbs red wavelengths first, so everything turns blue-green fast. <b>Custom white balance</b> on a white slate at depth, or a red filter on your housing, is what brings coral colors back. Get within arm's length — the less water between you and the subject, the more vivid the colors."
+  },
+
+  rain: {
+    name: "Rain",
+    icon: "🌧️",
+    subtitle: "Rainy streets, droplets on glass, moody weather.",
+    iphone: {
+      mode: "Photo",
+      tips: [
+        "Shoot from under cover — awning, doorway, car window.",
+        "Look for reflections in puddles — they make a moody shot pop.",
+        "Wipe the lens often; a drop on the glass ruins the whole frame."
+      ]
+    },
+    canon: {
+      mode: "Av (Aperture Priority)",
+      aperture: "f/4 – f/5.6",
+      shutter: "1/250s (to freeze drops) or 1/30s (to streak them)",
+      iso: "400 – 1600",
+      wb: "AWB or Cloudy",
+      focus: "One Shot AF · single point",
+      meter: "Evaluative",
+      drive: "Single shot",
+      extra: "Use a rain cover or a plastic bag with a hole for the lens"
+    },
+    why: "You have a choice: <b>freeze the rain</b> with fast shutter (1/250s+) so individual drops are visible, OR <b>streak it</b> with slower shutter (1/30s) for that classic 'noir' rain feel. Cloudy WB warms the cool overcast light just enough."
+  },
+
+  snow: {
+    name: "Snow",
+    icon: "❄️",
+    subtitle: "Snowy landscapes, ski slopes, winter scenes.",
+    iphone: {
+      mode: "Photo",
+      tips: [
+        "Slide exposure UP — phone meters will make snow look gray, not white.",
+        "Look for a pop of color (red coat, pine tree) to break up the white.",
+        "Keep the phone warm — cold drains the battery fast."
+      ]
+    },
+    canon: {
+      mode: "Av (Aperture Priority)",
+      aperture: "f/8 – f/11",
+      shutter: "Auto",
+      iso: "100 – 200",
+      wb: "Daylight (NOT auto — AWB makes snow blue)",
+      focus: "One Shot AF · single point on subject",
+      meter: "Evaluative · dial in +1 to +1.7 exposure compensation",
+      drive: "Single shot"
+    },
+    why: "Camera meters assume the world is <b>middle gray</b>, so when faced with a sea of white snow, they underexpose to make the snow look gray. Add <b>+1 to +1.7 stops of exposure compensation</b> to keep snow actually white. Lock white balance to Daylight — AWB will see all that white and shift everything blue."
+  },
+
+  fireworks: {
+    name: "Fireworks",
+    icon: "🎆",
+    subtitle: "Explosive trails, July 4th, New Year's Eve.",
+    iphone: {
+      mode: "Photo with Burst, or Long Exposure via Live Photo",
+      tips: [
+        "Lean against a railing or rest the phone — long exposure shows shake.",
+        "Tap on a previous burst to set focus before the next one fires.",
+        "Live Photo → swipe up → Long Exposure for those classic light trails."
+      ]
+    },
+    canon: {
+      mode: "Manual (M)",
+      aperture: "f/8 – f/11",
+      shutter: "2 – 4 seconds (bulb mode for longer)",
+      iso: "100 – 200",
+      wb: "Daylight",
+      focus: "Manual focus to infinity (focus on a distant city light first)",
+      meter: "N/A · use histogram",
+      drive: "Single shot · remote or 2s timer",
+      extra: "Tripod is essential"
+    },
+    why: "Fireworks ARE the light source, so you don't need high ISO. <b>Slow shutter (2–4s)</b> captures the full burst trail. Narrow aperture (f/8–f/11) keeps trails crisp instead of blown-out. Manual focus locked to infinity because autofocus can't lock on a dark sky."
+  },
+
+  street: {
+    name: "Street / B&W",
+    icon: "🚶",
+    subtitle: "Candid moments, urban scenes, documentary feel.",
+    iphone: {
+      mode: "Photo (edit to B&W in Photos app after)",
+      tips: [
+        "Pre-tap on a wall at the same distance as your subject — locks focus, ready to fire fast.",
+        "Shoot from the hip or chest level for natural candids.",
+        "After the shot: edit → Black & White filter (Mono, Silvertone, or Noir)."
+      ]
+    },
+    canon: {
+      mode: "Av (Aperture Priority) or P",
+      aperture: "f/5.6 – f/8",
+      shutter: "Auto (keep above 1/125s)",
+      iso: "400 – 1600 (don't be shy)",
+      wb: "AWB (color doesn't matter if shooting B&W)",
+      focus: "Zone AF or pre-focus to a set distance",
+      meter: "Evaluative",
+      drive: "Single shot · silent mode if available",
+      extra: "Set Picture Style to Monochrome to preview B&W in viewfinder"
+    },
+    why: "Street is about <b>moment, not perfection</b>. Shoot in <b>P or Av</b> so you don't fumble dials and miss the shot. <b>Zone focus</b> at f/8 from ~10ft gives you a wide hyperfocal range where everything's sharp without needing AF. Bump ISO without guilt — grain reads as 'street' aesthetic in B&W."
+  },
+
+  product: {
+    name: "Product",
+    icon: "📦",
+    subtitle: "Clean shots for selling, listings, social.",
+    iphone: {
+      mode: "Photo",
+      tips: [
+        "Shoot near a big window on an overcast day — softest, most flattering light.",
+        "Use a plain white poster board behind and under for a seamless backdrop.",
+        "Tap the product to focus, then slide exposure to get the background pure white."
+      ]
+    },
+    canon: {
+      mode: "Av (Aperture Priority) or Manual",
+      aperture: "f/8 – f/11",
+      shutter: "Auto (tripod helps)",
+      iso: "100 – 200",
+      wb: "Custom WB on a white card, or fixed Daylight",
+      focus: "One Shot AF · single point on the product's key detail",
+      meter: "Evaluative",
+      drive: "Single shot · 2s timer",
+      extra: "Two lamps with diffusers (paper, white sheet) = pro look on a budget"
+    },
+    why: "Product photography is <b>all about controlled, even light</b>. f/8–f/11 keeps the entire product sharp front-to-back. Custom white balance on a white card means the background actually comes out white instead of slightly yellow or blue. A tripod lets you nail the exact same angle for a whole product line."
+  },
+
+  wildlife: {
+    name: "Wildlife",
+    icon: "🦌",
+    subtitle: "Animals in their natural habitat — deer, foxes, safari.",
+    iphone: {
+      mode: "Photo with telephoto if you have it (you don't on iPhone 14 base — crop after)",
+      tips: [
+        "Stay still and quiet — animals will let you get closer than you think.",
+        "Tap and hold on the animal to lock focus and exposure.",
+        "Shoot wide and crop later — iPhone 14 can't zoom in optically. Get the eye sharp first."
+      ]
+    },
+    canon: {
+      mode: "Tv (Shutter Priority) or Manual",
+      aperture: "f/5.6 – f/8 (or widest on long lens)",
+      shutter: "1/500s – 1/1000s",
+      iso: "400 – 3200 (let it climb)",
+      wb: "AWB or Daylight",
+      focus: "AI Servo AF · single point or zone on the eye",
+      meter: "Evaluative · Spot if backlit",
+      drive: "Continuous (high-speed burst)",
+      extra: "A 70-300mm or 100-400mm lens is the wildlife workhorse"
+    },
+    why: "Wildlife rarely cooperates — animals move suddenly and unpredictably. <b>Fast shutter (1/500s+)</b> freezes both their motion and your hand-shake on a long lens. <b>AI Servo</b> tracks them as they move. Burst mode means you don't have to time the perfect moment — fish it out from 10 frames later."
+  },
+
+  marine: {
+    name: "Marine Life",
+    icon: "🐬",
+    subtitle: "Surface marine life — whales, dolphins, fish in aquariums, tide pools.",
+    iphone: {
+      mode: "Photo with Burst",
+      tips: [
+        "For aquariums: press the lens FLAT against the glass to kill reflections.",
+        "For whales/dolphins: keep burst on, anticipate where they'll surface (watch for their wake).",
+        "Slide exposure DOWN — water reflects sun and tricks the meter."
+      ]
+    },
+    canon: {
+      mode: "Tv (Shutter Priority)",
+      aperture: "f/4 – f/5.6 (wider in aquarium)",
+      shutter: "1/1000s+ for breaching animals, 1/250s in aquariums",
+      iso: "400 – 3200",
+      wb: "AWB or Daylight outdoors; Custom in aquariums",
+      focus: "AI Servo AF · single point",
+      meter: "Evaluative · -1 EC near water glare",
+      drive: "Continuous (high-speed burst)",
+      extra: "Polarizing filter helps cut surface reflections for boat-side shots"
+    },
+    why: "Marine animals are <b>fast, splashy, and unpredictable</b>. For a breaching whale or jumping dolphin you need <b>1/1000s+</b> to freeze water spray and motion. In aquariums, glass kills sharpness — press the lens flat against it and you'll get much better results."
+  },
+
+  birds: {
+    name: "Birds in Flight",
+    icon: "🦅",
+    subtitle: "Flying birds — eagles, hawks, songbirds, seabirds.",
+    iphone: {
+      mode: "Photo with Burst (hold shutter)",
+      tips: [
+        "Birds and iPhones don't mix well — they're too small and fast. Try anyway, hold the shutter for burst.",
+        "Pre-focus on a far point in the sky, then track the bird and shoot.",
+        "Best at dawn/dusk when birds are active and light is angled."
+      ]
+    },
+    canon: {
+      mode: "Manual or Tv",
+      aperture: "f/5.6 – f/7.1 (widest on telephoto)",
+      shutter: "1/1600s – 1/2500s (small fast birds), 1/1000s (large soaring)",
+      iso: "Auto ISO with 6400 max",
+      wb: "Daylight",
+      focus: "AI Servo AF · zone or expanded single point",
+      meter: "Evaluative · +1 EC against bright sky",
+      drive: "Continuous high-speed (7fps on 80D)",
+      extra: "Practice on slower birds (herons, gulls) before songbirds"
+    },
+    why: "Birds-in-flight (BIF) is the hardest mainstream genre. Wings flap at <b>20+ Hz</b> for songbirds — you need a <b>silly-fast shutter</b> to freeze them. Sky meters incorrectly (too bright), so add <b>+1 EC</b>. Pre-focus and track — AI Servo with zone AF gives the camera room to find the bird as you pan."
+  },
+
+  city_night: {
+    name: "City Lights / Night Skyline",
+    icon: "🌆",
+    subtitle: "Cityscapes, neon streets, skylines after dark.",
+    iphone: {
+      mode: "Night mode (auto, hold steady)",
+      tips: [
+        "Find a railing, ledge, or wall to brace against — Night mode is 1–3 seconds.",
+        "Tap a darker part of the scene to expose for it; bright neon will stay sharp.",
+        "0.5x ultra-wide is great for sweeping skylines."
+      ]
+    },
+    canon: {
+      mode: "Av (Aperture Priority) or Manual",
+      aperture: "f/8 – f/11",
+      shutter: "2 – 15 seconds (tripod)",
+      iso: "100 – 400",
+      wb: "Tungsten (~3200K) for cool blue feel, or AWB for warm",
+      focus: "One Shot AF · single point on a bright building, or manual to infinity",
+      meter: "Evaluative · check histogram",
+      drive: "Single shot · 2s timer or remote",
+      extra: "Tripod is essential. ND filter optional for ultra-long exposures with car light trails"
+    },
+    why: "Cities at night are <b>bright lights against deep dark</b> — way too much dynamic range for any single exposure to nail by guessing. Use a tripod, narrow aperture (sharper + starburst on point lights), low ISO. <b>Tungsten WB</b> gives that cinematic deep-blue sky look behind warm building windows."
+  },
+
+  sky_clouds: {
+    name: "Sky / Clouds",
+    icon: "☁️",
+    subtitle: "Dramatic skies, cloud formations, sunbeams.",
+    iphone: {
+      mode: "Photo · 0.5x ultra-wide for big skies",
+      tips: [
+        "Tap on the brightest cloud to lock exposure there — adds drama.",
+        "Slide exposure DOWN to deepen the blue and bring out cloud detail.",
+        "Look up often — the best skies are usually 30 minutes before/after sunset."
+      ]
+    },
+    canon: {
+      mode: "Av (Aperture Priority)",
+      aperture: "f/8 – f/11",
+      shutter: "Auto (will be fast)",
+      iso: "100",
+      wb: "Daylight",
+      focus: "One Shot AF · or manual to infinity",
+      meter: "Evaluative · -0.7 to -1 EC for richer sky",
+      drive: "Single shot",
+      extra: "Circular polarizer DRAMATICALLY deepens blue skies"
+    },
+    why: "Sky photography is <b>all about contrast between cloud and blue</b>. Underexpose slightly (-0.7 EC) — it makes the blue richer and pulls texture out of clouds. A <b>circular polarizer</b> at 90° to the sun darkens blues and makes whites stand out — single best filter you can own for sky shots."
+  },
+
+  aurora: {
+    name: "Aurora / Northern Lights",
+    icon: "🌌",
+    subtitle: "Northern or Southern Lights dancing in the sky.",
+    iphone: {
+      mode: "Night mode (tripod, max duration)",
+      tips: [
+        "Tripod or rest on a car hood — Night mode needs 5–30 seconds.",
+        "Turn off auto-brightness so the screen doesn't blow out your night vision.",
+        "Tap on a star or distant light to focus, then leave the phone alone."
+      ]
+    },
+    canon: {
+      mode: "Manual (M)",
+      aperture: "f/2.8 (widest you have)",
+      shutter: "5 – 15 seconds (depends on aurora intensity)",
+      iso: "1600 – 6400",
+      wb: "3500 – 4500K (cooler preserves green)",
+      focus: "Manual focus to infinity (focus on a far light first)",
+      meter: "N/A · use histogram",
+      drive: "Single shot · 2s timer or remote",
+      extra: "Tripod essential. Aurora can change in 30 seconds — review and adjust shutter often"
+    },
+    why: "Aurora is faint and DYNAMIC — too long an exposure smears the curtains into a green blob, too short captures nothing. Start at <b>10 sec, f/2.8, ISO 3200</b> and adjust based on how bright the aurora is. <b>Cooler WB (~3500K)</b> keeps the green vivid; auto WB will desaturate it."
+  },
+
+  modern_arch: {
+    name: "Modern Architecture",
+    icon: "🏙️",
+    subtitle: "Skyscrapers, glass, geometric patterns, minimalist buildings.",
+    iphone: {
+      mode: "Photo · grid + level ON (Settings → Camera)",
+      tips: [
+        "Lines MUST be straight — turn on the level overlay and align with horizontals.",
+        "0.5x ultra-wide makes tall buildings look more imposing — shoot from the base looking up.",
+        "Edit in Photos: Crop → Perspective tool to fix any leaning verticals."
+      ]
+    },
+    canon: {
+      mode: "Av (Aperture Priority) or Manual",
+      aperture: "f/8 – f/11",
+      shutter: "Auto",
+      iso: "100",
+      wb: "Daylight",
+      focus: "One Shot AF · single point",
+      meter: "Evaluative",
+      drive: "Single shot",
+      extra: "Tilt-shift lens is the architect's tool but costs $$$ — software can fix most"
+    },
+    why: "Modern architecture is about <b>clean lines and geometry</b>. Any tilt looks AMATEUR — keep the camera dead-level and the verticals true. f/8–f/11 for edge-to-edge sharpness. Shoot in <b>flat overcast or golden hour</b> — harsh noon shadows ruin minimalist designs."
+  },
+
+  indoor_event: {
+    name: "Indoor Event / Wedding",
+    icon: "🥂",
+    subtitle: "Receptions, parties, dinners — mixed light, people moving.",
+    iphone: {
+      mode: "Photo (NOT Night mode — too slow for moving people)",
+      tips: [
+        "Find a window or warm lamp and shoot people NEAR it — best light in the room.",
+        "DO NOT use flash. Tap and hold on a face to lock exposure.",
+        "Hold the shutter for burst when there's movement — laughter, toasts, dancing."
+      ]
+    },
+    canon: {
+      mode: "Av (Aperture Priority) or Manual",
+      aperture: "f/2.8 (or widest you have)",
+      shutter: "1/125s minimum, 1/250s for dancing",
+      iso: "1600 – 6400",
+      wb: "AWB or Tungsten (most venues are tungsten-heavy)",
+      focus: "AI Servo AF · single point or zone on faces",
+      meter: "Evaluative",
+      drive: "Continuous (low-speed burst, less shutter shock)",
+      extra: "External flash bounced off the ceiling — game changer if you have one"
+    },
+    why: "Indoor events are the hardest test of any camera: <b>low light, warm color cast, constant motion</b>. Wide aperture + high ISO is the only way to keep shutter fast enough for moving people. <b>NO direct flash</b> — it makes everyone look terrified. Bounce it off the ceiling instead, or use available light only."
+  }
+};
+
+/* ============================================================
+   DEVICES — phones & cameras supported in beta
+   Only "tuned" devices have hand-crafted settings.
+   "generic" devices use the closest-matching profile.
+   ============================================================ */
+const PHONES = {
+  iphone_14: {
+    name: "iPhone 14",
+    tuned: true,
+    notes: "Wide + ultra-wide (no telephoto, no Macro mode). Night mode, Photographic Styles."
+  },
+  iphone_14_pro: { name: "iPhone 14 Pro / Pro Max", tuned: false, notes: "Adds telephoto + Macro mode" },
+  iphone_15: { name: "iPhone 15 / 15 Plus", tuned: false, notes: "Similar to 14, with main-camera 2x crop" },
+  iphone_15_pro: { name: "iPhone 15 Pro / Pro Max", tuned: false, notes: "ProRAW, Action mode, 3x or 5x tele" },
+  iphone_16_pro: { name: "iPhone 16 / 16 Pro", tuned: false, notes: "Camera Control button, Photographic Styles v2" },
+  pixel_8: { name: "Google Pixel 8 / 8 Pro", tuned: false, notes: "Night Sight, Magic Editor" },
+  samsung_s24: { name: "Samsung Galaxy S24", tuned: false, notes: "Pro mode in stock camera app" },
+  other_phone: { name: "Other smartphone", tuned: false, notes: "Generic mobile-camera tips" }
+};
+
+const CAMERAS = {
+  canon_80d: {
+    name: "Canon EOS 80D",
+    tuned: true,
+    notes: "24MP APS-C DSLR. ISO 100–16000. Dual Pixel AF. 7 fps burst."
+  },
+  canon_90d: { name: "Canon EOS 90D", tuned: false, notes: "32MP APS-C, similar controls" },
+  canon_r6: { name: "Canon EOS R6 / R6 II", tuned: false, notes: "Full-frame mirrorless, better high-ISO" },
+  canon_r50: { name: "Canon EOS R50 / R10", tuned: false, notes: "Mirrorless APS-C beginner-friendly" },
+  sony_a7: { name: "Sony Alpha A7 series", tuned: false, notes: "Full-frame mirrorless" },
+  sony_a6700: { name: "Sony A6400 / A6700", tuned: false, notes: "APS-C mirrorless" },
+  nikon_z: { name: "Nikon Z6 / Z7 / Z50", tuned: false, notes: "Nikon mirrorless" },
+  fuji_xt: { name: "Fujifilm X-T series", tuned: false, notes: "APS-C with film simulations" },
+  other_camera: { name: "Other camera", tuned: false, notes: "Generic DSLR / mirrorless settings" }
+};
+
+/* ============================================================
+   STATE
+   ============================================================ */
+let currentScene = null;
+let autoSuggested = null;
+let videoStream = null;
+let usingFrontCamera = false;
+let selectedPhone = 'iphone_14';
+let selectedCamera = 'canon_80d';
+let pendingPhone = null;
+let pendingCamera = null;
+
+/* ============================================================
+   DEVICE PICKER
+   ============================================================ */
+function loadDevicePrefs() {
+  try {
+    const sp = localStorage.getItem('sc_phone');
+    const sc = localStorage.getItem('sc_camera');
+    if (sp && PHONES[sp]) selectedPhone = sp;
+    if (sc && CAMERAS[sc]) selectedCamera = sc;
+  } catch (e) {}
+}
+function saveDevicePrefs() {
+  try {
+    localStorage.setItem('sc_phone', selectedPhone);
+    localStorage.setItem('sc_camera', selectedCamera);
+  } catch (e) {}
+}
+function updateGearPill() {
+  $('gearPhone').textContent = PHONES[selectedPhone].name;
+  $('gearCamera').textContent = CAMERAS[selectedCamera].name;
+}
+function renderDeviceOptions() {
+  const phoneWrap = $('phoneOptions');
+  const camWrap = $('cameraOptions');
+  phoneWrap.innerHTML = '';
+  camWrap.innerHTML = '';
+  Object.entries(PHONES).forEach(([key, p]) => {
+    const el = document.createElement('div');
+    el.className = 'device-option' + (p.tuned ? ' tuned' : ' coming-soon') + (key === pendingPhone ? ' selected' : '');
+    el.innerHTML = `<div><div class="name">${p.name}</div><div class="status" style="text-transform:none;letter-spacing:0;color:var(--text-dim);font-size:12px;margin-top:2px;">${p.notes}</div></div><span class="status">${p.tuned ? '✓ Tuned' : 'Soon'}</span>`;
+    el.onclick = () => { pendingPhone = key; renderDeviceOptions(); };
+    phoneWrap.appendChild(el);
+  });
+  Object.entries(CAMERAS).forEach(([key, c]) => {
+    const el = document.createElement('div');
+    el.className = 'device-option' + (c.tuned ? ' tuned' : ' coming-soon') + (key === pendingCamera ? ' selected' : '');
+    el.innerHTML = `<div><div class="name">${c.name}</div><div class="status" style="text-transform:none;letter-spacing:0;color:var(--text-dim);font-size:12px;margin-top:2px;">${c.notes}</div></div><span class="status">${c.tuned ? '✓ Tuned' : 'Soon'}</span>`;
+    el.onclick = () => { pendingCamera = key; renderDeviceOptions(); };
+    camWrap.appendChild(el);
+  });
+}
+function openDevicePicker() {
+  pendingPhone = selectedPhone;
+  pendingCamera = selectedCamera;
+  renderDeviceOptions();
+  $('deviceModal').classList.add('show');
+}
+function confirmDevices() {
+  if (pendingPhone) selectedPhone = pendingPhone;
+  if (pendingCamera) selectedCamera = pendingCamera;
+  saveDevicePrefs();
+  updateGearPill();
+  $('deviceModal').classList.remove('show');
+  if (currentScene) selectScene(currentScene);  // re-render
+}
+
+const $ = id => document.getElementById(id);
+
+/* ============================================================
+   RENDER SCENE CHIPS
+   ============================================================ */
+function renderChips() {
+  const wrap = $('sceneChips');
+  wrap.innerHTML = '';
+  Object.keys(SCENES).forEach(key => {
+    const s = SCENES[key];
+    const chip = document.createElement('div');
+    chip.className = 'chip';
+    chip.dataset.key = key;
+    chip.innerHTML = `${s.icon} ${s.name}`;
+    if (key === currentScene) chip.classList.add('active');
+    if (key === autoSuggested) {
+      chip.classList.add('suggested');
+      chip.innerHTML += ` <span class="sparkle">✨ auto</span>`;
+    }
+    chip.onclick = () => selectScene(key);
+    wrap.appendChild(chip);
+  });
+}
+
+/* ============================================================
+   SELECT SCENE → RENDER RESULTS
+   ============================================================ */
+function selectScene(key) {
+  currentScene = key;
+  renderChips();
+  const s = SCENES[key];
+
+  $('sceneTitle').textContent = `${s.icon} ${s.name}`;
+  $('sceneSubtitle').textContent = s.subtitle;
+
+  // Update device card headers based on selection
+  const phone = PHONES[selectedPhone];
+  const cam = CAMERAS[selectedCamera];
+  $('phoneCardTitle').textContent = phone.name;
+  $('phoneCardSubtitle').textContent = phone.notes;
+  $('cameraCardTitle').textContent = cam.name;
+  $('cameraCardSubtitle').textContent = cam.notes;
+
+  // Beta tuning notes
+  const pNote = $('phoneBetaNote');
+  if (phone.tuned) {
+    pNote.style.display = 'none';
+  } else {
+    pNote.style.display = 'block';
+    pNote.innerHTML = `⚠️ <b>${phone.name}</b> isn't individually tuned yet — showing iPhone-14-based tips. Most still apply; check the device's manual for exclusive features (e.g. dedicated Macro mode, telephoto zoom, RAW capture).`;
+  }
+  const cNote = $('cameraBetaNote');
+  if (cam.tuned) {
+    cNote.style.display = 'none';
+  } else {
+    cNote.style.display = 'block';
+    cNote.innerHTML = `⚠️ <b>${cam.name}</b> isn't individually tuned yet — showing Canon-80D-based settings. Mode/aperture/shutter/ISO concepts transfer between cameras; menu names may differ.`;
+  }
+
+  // iPhone
+  $('iphoneMode').textContent = s.iphone.mode;
+  const tipUl = $('iphoneTips');
+  tipUl.innerHTML = '';
+  s.iphone.tips.forEach(t => {
+    const li = document.createElement('li');
+    li.textContent = t;
+    tipUl.appendChild(li);
+  });
+
+  // Canon
+  const canon = s.canon;
+  const rows = [
+    ['Mode dial', canon.mode],
+    ['Aperture', canon.aperture],
+    ['Shutter', canon.shutter],
+    ['ISO', canon.iso],
+    ['White balance', canon.wb],
+    ['Focus mode', canon.focus],
+    ['Metering', canon.meter],
+    ['Drive', canon.drive],
+  ];
+  if (canon.extra) rows.push(['Note', canon.extra]);
+  const canonDiv = $('canonSettings');
+  canonDiv.innerHTML = '';
+  rows.forEach(([label, value]) => {
+    const row = document.createElement('div');
+    row.className = 'setting-row';
+    row.innerHTML = `<span class="label">${label}</span><span class="value">${value}</span>`;
+    canonDiv.appendChild(row);
+  });
+
+  // Why
+  $('whyBox').innerHTML = s.why;
+  $('whyBox').classList.remove('show');
+
+  $('results').classList.add('show');
+  // Scroll results into view
+  setTimeout(() => $('results').scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+}
+
+/* ============================================================
+   IMAGE ANALYSIS — extract brightness, warmth, contrast
+   ============================================================ */
+/* Extract a rich set of metrics from any image / video frame.
+   Used both for scene-guessing and for generating live insights. */
+function extractMetrics(source) {
+  const canvas = document.createElement('canvas');
+  const SIZE = 100;
+  canvas.width = SIZE; canvas.height = SIZE;
+  const ctx = canvas.getContext('2d');
+  try { ctx.drawImage(source, 0, 0, SIZE, SIZE); }
+  catch (e) { return null; }
+  const data = ctx.getImageData(0, 0, SIZE, SIZE).data;
+
+  let totalLum = 0, totalR = 0, totalG = 0, totalB = 0;
+  const pixels = data.length / 4;
+  const lums = new Array(pixels);
+  const lumGrid = []; // 2D for spatial analysis
+  let satSum = 0;
+  let skinPixels = 0;
+  const hist = new Array(256).fill(0);
+
+  for (let y = 0; y < SIZE; y++) {
+    const row = [];
+    for (let x = 0; x < SIZE; x++) {
+      const idx = (y * SIZE + x) * 4;
+      const r = data[idx], g = data[idx+1], b = data[idx+2];
+      const lum = 0.299*r + 0.587*g + 0.114*b;
+      totalLum += lum;
+      const li = y * SIZE + x;
+      lums[li] = lum;
+      row.push(lum);
+      hist[Math.floor(lum)]++;
+      totalR += r; totalG += g; totalB += b;
+      const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+      satSum += mx === 0 ? 0 : (mx - mn) / mx;
+      // Skin tone heuristic (RGB rule, roughly):
+      if (r > 95 && g > 40 && b > 20 && r > g && r > b &&
+          (mx - mn) > 15 && Math.abs(r - g) > 15) skinPixels++;
+    }
+    lumGrid.push(row);
+  }
+
+  const avgLum = totalLum / pixels;
+  const avgR = totalR / pixels, avgG = totalG / pixels, avgB = totalB / pixels;
+  const warmth = avgR - avgB;
+  const greenMagenta = avgG - (avgR + avgB) / 2;
+  const avgSat = satSum / pixels;
+  const blueDominance = avgB - (avgR + avgG) / 2;
+  const greenBlueDominance = (avgG + avgB) / 2 - avgR;
+  const skinRatio = skinPixels / pixels;
+
+  // Contrast = stdev of luminance
+  let variance = 0;
+  for (let i = 0; i < pixels; i++) variance += (lums[i] - avgLum) ** 2;
+  const contrast = Math.sqrt(variance / pixels);
+
+  // Clipping
+  let highClip = 0, lowClip = 0;
+  for (let v = 250; v < 256; v++) highClip += hist[v];
+  for (let v = 0; v < 6; v++) lowClip += hist[v];
+  const clippedHighlights = highClip / pixels;
+  const clippedShadows = lowClip / pixels;
+
+  // Dynamic range — 5th to 95th percentile of luminance
+  const sortedLums = [...lums].sort((a, b) => a - b);
+  const p5 = sortedLums[Math.floor(pixels * 0.05)];
+  const p95 = sortedLums[Math.floor(pixels * 0.95)];
+  const dynamicRange = p95 - p5;
+
+  // Edge sharpness (Sobel-lite — gradient magnitude)
+  let edgeSum = 0, edgeCount = 0;
+  for (let y = 1; y < SIZE - 1; y++) {
+    for (let x = 1; x < SIZE - 1; x++) {
+      const dx = lumGrid[y][x+1] - lumGrid[y][x-1];
+      const dy = lumGrid[y+1][x] - lumGrid[y-1][x];
+      edgeSum += Math.sqrt(dx*dx + dy*dy);
+      edgeCount++;
+    }
+  }
+  const sharpness = edgeSum / edgeCount;
+
+  // Zone luminance: top / mid / bottom thirds
+  let topSum = 0, midSum = 0, botSum = 0;
+  let topCount = 0, midCount = 0, botCount = 0;
+  for (let y = 0; y < SIZE; y++) {
+    for (let x = 0; x < SIZE; x++) {
+      const l = lumGrid[y][x];
+      if (y < SIZE / 3) { topSum += l; topCount++; }
+      else if (y < SIZE * 2/3) { midSum += l; midCount++; }
+      else { botSum += l; botCount++; }
+    }
+  }
+  const topLum = topSum / topCount;
+  const midLum = midSum / midCount;
+  const botLum = botSum / botCount;
+
+  // Bright points (specular highlights / lights / stars)
+  let brightSpots = 0;
+  for (let i = 0; i < pixels; i++) if (lums[i] > 230) brightSpots++;
+  const brightRatio = brightSpots / pixels;
+
+  // Approximate color temperature (very rough — for hint only)
+  // High R/B ratio = warm (low K), high B/R = cool (high K)
+  const rbRatio = (avgR + 1) / (avgB + 1);
+  let estTemp;
+  if (rbRatio > 1.6) estTemp = 2800;       // tungsten
+  else if (rbRatio > 1.3) estTemp = 3500;  // warm indoor / golden hour
+  else if (rbRatio > 1.1) estTemp = 4500;  // soft afternoon
+  else if (rbRatio > 0.95) estTemp = 5500; // daylight
+  else if (rbRatio > 0.85) estTemp = 6500; // cloudy
+  else estTemp = 8000;                     // shade / cool
+
+  return {
+    avgLum, avgR, avgG, avgB, warmth, greenMagenta, avgSat,
+    blueDominance, greenBlueDominance, skinRatio,
+    contrast, clippedHighlights, clippedShadows, dynamicRange,
+    sharpness, topLum, midLum, botLum, brightRatio, estTemp,
+    pixels, lumGrid
+  };
+}
+
+/* Scene-bucket guess — checks most-specific patterns first */
+function guessScene(m) {
+  const { avgLum, warmth, contrast, avgSat, blueDominance, greenBlueDominance,
+          brightRatio, topLum, midLum, botLum, greenMagenta } = m;
+  let guess, hint;
+  const skyDelta = (topLum - botLum) * 800;
+  const skyDominant = topLum > botLum + 40;
+
+  // --- Dark scenes (specific → generic) ---
+  // Aurora: dark, with green/cyan tint up top
+  if (avgLum < 70 && (greenMagenta > 8 || (m.avgG > m.avgR && m.avgG > m.avgB && topLum < 100))
+      && avgSat > 0.15) {
+    return { guess: 'aurora', hint: 'dark scene with green / cyan tint — possibly aurora' };
+  }
+  // City lights: dark with many scattered bright points (NOT concentrated like fireworks)
+  if (avgLum < 80 && brightRatio > 0.02 && brightRatio < 0.25 && contrast > 50) {
+    return { guess: 'city_night', hint: 'dark scene with many scattered lights — looks like a cityscape' };
+  }
+  // Fireworks: dark with concentrated bright bursts, very high contrast
+  if (avgLum < 40 && brightRatio > 0.005 && brightRatio < 0.04 && contrast > 70) {
+    return { guess: 'fireworks', hint: 'bright bursts against dark sky' };
+  }
+  // Night sky: nearly black, very dark
+  if (avgLum < 35) {
+    return { guess: 'night', hint: 'very dark — looks like night sky' };
+  }
+  // Low light indoor
+  if (avgLum < 90) {
+    return { guess: 'lowlight', hint: 'dim scene — low light' };
+  }
+
+  // --- Bright/specific color signatures ---
+  if (avgLum > 200 && avgSat < 0.15) {
+    return { guess: 'snow', hint: 'very bright with little color' };
+  }
+  if (greenBlueDominance > 25 && avgSat > 0.2 && avgLum > 80 && avgLum < 180) {
+    return { guess: 'underwater', hint: 'blue-green dominant' };
+  }
+  if (blueDominance > 20 && avgLum > 150 && avgSat > 0.15) {
+    return { guess: 'beach', hint: 'bright with strong blues' };
+  }
+  if (warmth > 35 && avgLum > 130 && avgLum < 210) {
+    return { guess: 'sunset', hint: 'warm golden tones' };
+  }
+
+  // --- Sky / clouds: top dominant, blue/gray, uniform ---
+  if (skyDominant && topLum > 150 && avgSat < 0.3 && contrast < 60 && blueDominance > 0) {
+    return { guess: 'sky_clouds', hint: 'sky-dominant with soft tones — clouds / skyscape' };
+  }
+
+  // --- Landscape: bright, contrasty, with sky ---
+  if (avgLum > 180 && contrast > 50 && skyDelta > 1500) {
+    return { guess: 'landscape', hint: 'bright wide scene with sky' };
+  }
+
+  // --- Indoor event: medium brightness, warm cast, mixed (people likely) ---
+  if (avgLum > 90 && avgLum < 160 && warmth > 15 && contrast > 30 && m.skinRatio > 0.03) {
+    return { guess: 'indoor_event', hint: 'warm indoor light with faces — event / dinner' };
+  }
+
+  // --- B&W / street: low color, high contrast ---
+  if (avgSat < 0.12 && contrast > 50) {
+    return { guess: 'street', hint: 'low color, high contrast — B&W feel' };
+  }
+
+  // --- Portrait: soft, even, person-likely ---
+  if (avgLum > 130 && contrast < 45) {
+    return { guess: 'portrait', hint: 'soft, even lighting' };
+  }
+
+  // --- Modern architecture: cool, structured, high contrast ---
+  if (warmth < -15 && avgLum > 100 && contrast > 50) {
+    return { guess: 'modern_arch', hint: 'cool structured tones — likely modern building' };
+  }
+  if (warmth < -15 && avgLum > 100) {
+    return { guess: 'architecture', hint: 'cool, structured tones' };
+  }
+
+  return { guess: 'portrait', hint: 'general daylight scene' };
+}
+
+/* For backward compatibility with existing callers */
+function analyzeImage(img) {
+  const m = extractMetrics(img);
+  if (!m) return { guess: 'portrait', hint: 'analysis failed' };
+  const { guess, hint } = guessScene(m);
+  return { ...m, guess, hint };
+}
+
+/* ============================================================
+   INSIGHTS — turn metrics into specific suggestions
+   ============================================================ */
+function generateInsights(m, opts = {}) {
+  const out = [];
+  const { motionLevel = 0, isLive = false } = opts;
+
+  // --- Exposure issues ---
+  if (m.clippedHighlights > 0.06) {
+    out.push({
+      sev: 'warn', icon: '☀️',
+      title: 'Highlights are blown out',
+      msg: `${Math.round(m.clippedHighlights*100)}% of the image is pure white — that detail is gone. Dial in <b>-1 to -2 exposure compensation</b>, or meter for the sky and let the foreground silhouette.`
+    });
+  }
+  if (m.clippedShadows > 0.15) {
+    out.push({
+      sev: 'warn', icon: '⬛',
+      title: 'Shadows are crushed',
+      msg: `${Math.round(m.clippedShadows*100)}% of the image is near-pure black. Bump exposure compensation <b>+1</b>, or turn on HDR / use a reflector to fill the shadows.`
+    });
+  }
+  if (m.avgLum < 60) {
+    out.push({
+      sev: 'critical', icon: '🔦',
+      title: 'Very low light',
+      msg: `Handheld needs shutter ≥ 1/60s and ISO ~1600–3200 on the 80D. Brace against a wall or use a tripod. iPhone 14 will auto-engage Night mode — <b>hold steady for 1–3 seconds</b>.`
+    });
+  } else if (m.avgLum > 215 && m.clippedHighlights < 0.02) {
+    out.push({
+      sev: 'info', icon: '☀️',
+      title: 'Bright overall — watch your meter',
+      msg: `Lots of white/bright tones. Camera meter may try to underexpose. On Canon, dial in <b>+0.7 to +1.3 exposure comp</b> to keep whites looking white.`
+    });
+  }
+
+  // --- Subject / composition ---
+  if (m.skinRatio > 0.05) {
+    out.push({
+      sev: 'info', icon: '👤',
+      title: 'Face / person detected',
+      msg: `Focus on the eye nearest the camera. Use <b>One Shot AF + single point</b> on the 80D, or tap-and-hold on iPhone to lock focus.`
+    });
+  }
+
+  // --- Color cast / WB ---
+  if (m.warmth > 50 && m.avgLum > 80) {
+    out.push({
+      sev: 'info', icon: '🌅',
+      title: 'Strong warm cast — about ' + m.estTemp + 'K',
+      msg: `Looks like tungsten, golden hour, or sunset. <b>Auto WB</b> will neutralize this and kill the vibe. Set WB to <b>Cloudy</b> or <b>Daylight</b> to preserve the warmth.`
+    });
+  } else if (m.warmth < -25 && m.avgLum > 80) {
+    out.push({
+      sev: 'info', icon: '🧊',
+      title: 'Cool / blue cast — about ' + m.estTemp + 'K',
+      msg: `Shade, overcast, or fluorescent light. Set WB to <b>Shade</b> or <b>Tungsten</b> to warm it back up. Skin tones will look much healthier.`
+    });
+  }
+  if (m.greenMagenta > 20) {
+    out.push({
+      sev: 'info', icon: '💚',
+      title: 'Green color cast',
+      msg: `Fluorescent lighting probably. Use the <b>Fluorescent</b> WB preset, or shoot RAW and fix in post.`
+    });
+  }
+
+  // --- Sharpness / blur ---
+  if (m.sharpness < 6 && m.avgLum > 80) {
+    out.push({
+      sev: 'warn', icon: '🌫️',
+      title: 'Image looks soft / possibly out of focus',
+      msg: `Either focus missed, or shutter is too slow. Rule of thumb: shutter speed ≥ <b>1 / focal length</b> (e.g. 1/100s minimum for a 100mm lens). Or refocus and re-shoot.`
+    });
+  }
+
+  // --- Dynamic range ---
+  if (m.dynamicRange > 200 && m.contrast > 60) {
+    out.push({
+      sev: 'warn', icon: '🌗',
+      title: 'High-contrast scene',
+      msg: `Big spread between bright and dark. Single exposure can't hold both. Try <b>HDR</b> mode (iPhone auto, Canon menu), or expose for the highlights and lift shadows in editing.`
+    });
+  }
+
+  // --- Saturation / B&W hint ---
+  if (m.avgSat < 0.08 && m.contrast > 40) {
+    out.push({
+      sev: 'info', icon: '🎨',
+      title: 'Naturally low color — try B&W',
+      msg: `This scene is nearly monochrome already. Set Canon's <b>Picture Style → Monochrome</b> (preview B&W in the finder), or edit to B&W in iPhone Photos after.`
+    });
+  } else if (m.avgSat > 0.45) {
+    out.push({
+      sev: 'info', icon: '🌈',
+      title: 'Very saturated colors',
+      msg: `Vibrant scene. Lower aperture (f/5.6–f/8) keeps colors crisp without bleeding. Avoid Vivid picture styles — they'll oversaturate further.`
+    });
+  }
+
+  // --- Spatial / zone hints ---
+  if (m.topLum > m.botLum + 60 && m.avgLum > 100) {
+    out.push({
+      sev: 'info', icon: '🏞️',
+      title: 'Bright sky, darker foreground',
+      msg: `Classic landscape pattern. Either use a <b>graduated ND filter</b> on the 80D, expose for the sky and lift shadows in post, or pick HDR mode on iPhone.`
+    });
+  }
+
+  // --- Motion (live preview only) ---
+  if (isLive && motionLevel > 0.10) {
+    out.push({
+      sev: 'warn', icon: '🏃',
+      title: 'Lots of movement in frame',
+      msg: `Switch to <b>shutter ≥ 1/500s</b> and <b>AI Servo AF</b> on the Canon. Burst mode helps. iPhone: hold the shutter for burst, or use Action-style fast tap.`
+    });
+  } else if (isLive && motionLevel > 0.04) {
+    out.push({
+      sev: 'info', icon: '💫',
+      title: 'Some motion detected',
+      msg: `Shutter ≥ 1/250s should freeze most casual movement. Keep AI Servo on if the subject is approaching/receding.`
+    });
+  }
+
+  return out;
+}
+
+/* Wipe leftover analysis UI before a new input arrives.
+   Called when: opening camera, closing camera, starting upload, reset. */
+function clearAnalysisState() {
+  autoSuggested = null;
+  currentScene = null;
+  $('autoBanner').classList.remove('show');
+  $('insightsPanel').classList.remove('show');
+  $('insightsList').innerHTML = '';
+  $('results').classList.remove('show');
+  $('uploadError').style.display = 'none';
+  renderChips();
+}
+
+function renderInsights(insights, { isLive = false } = {}) {
+  const panel = $('insightsPanel');
+  const list = $('insightsList');
+  $('liveBadge').style.display = isLive ? 'inline' : 'none';
+  $('insightsTitle').textContent = isLive ? 'What I see right now' : 'What I see';
+  list.innerHTML = '';
+  if (!insights.length) {
+    const empty = document.createElement('div');
+    empty.className = 'insights-empty';
+    empty.textContent = isLive
+      ? '✓ Looks good — nothing critical to fix.'
+      : '✓ No major issues spotted in the image.';
+    list.appendChild(empty);
+  } else {
+    insights.forEach(ins => {
+      const card = document.createElement('div');
+      card.className = `insight ${ins.sev}`;
+      card.innerHTML = `<div class="ico">${ins.icon}</div><div class="body"><p class="ttl">${ins.title}</p><p class="msg">${ins.msg}</p></div>`;
+      list.appendChild(card);
+    });
+  }
+  panel.classList.add('show');
+}
+
+function runAnalysis(imgElement) {
+  try {
+    // Guard: only analyze if the image actually has pixels
+    if (!imgElement.naturalWidth || imgElement.naturalWidth < 4) {
+      console.warn('Skipping analysis — image has no usable pixels');
+      return;
+    }
+    const m = extractMetrics(imgElement);
+    if (!m) return;
+    // Guard: if the canvas read all zeros (transparent / broken image), skip
+    if (m.avgLum === 0 && m.contrast === 0) {
+      console.warn('Skipping analysis — image appears empty');
+      return;
+    }
+    const { guess, hint } = guessScene(m);
+    autoSuggested = guess;
+    $('autoText').innerHTML = `${hint}. Suggesting <b>${SCENES[guess].name}</b>.`;
+    $('autoBanner').classList.add('show');
+    renderChips();
+    selectScene(guess);
+    const insights = generateInsights(m, { isLive: false });
+    renderInsights(insights, { isLive: false });
+  } catch (err) {
+    console.warn('Analysis failed', err);
+  }
+}
+
+/* Live video analysis loop */
+let liveInterval = null;
+let prevFrameLum = null;
+
+function computeMotion(currMetrics) {
+  if (!prevFrameLum || !currMetrics.lumGrid) {
+    prevFrameLum = currMetrics.lumGrid;
+    return 0;
+  }
+  const grid = currMetrics.lumGrid;
+  const H = grid.length, W = grid[0].length;
+  if (prevFrameLum.length !== H || prevFrameLum[0].length !== W) {
+    prevFrameLum = grid;
+    return 0;
+  }
+  let diffSum = 0, count = 0;
+  for (let y = 0; y < H; y += 2) {
+    for (let x = 0; x < W; x += 2) {
+      diffSum += Math.abs(grid[y][x] - prevFrameLum[y][x]);
+      count++;
+    }
+  }
+  prevFrameLum = grid;
+  return (diffSum / count) / 255;  // normalized 0-1
+}
+
+function startLiveAnalysis() {
+  if (liveInterval) clearInterval(liveInterval);
+  prevFrameLum = null;
+  liveInterval = setInterval(() => {
+    const v = $('videoEl');
+    if (!v.videoWidth) return;
+    const m = extractMetrics(v);
+    if (!m) return;
+    const motion = computeMotion(m);
+    const { guess, hint } = guessScene(m);
+    // Update auto-suggested scene
+    if (autoSuggested !== guess) {
+      autoSuggested = guess;
+      $('autoText').innerHTML = `${hint}. Suggesting <b>${SCENES[guess].name}</b>.`;
+      $('autoBanner').classList.add('show');
+      renderChips();
+      // Only auto-render results if user hasn't picked one
+      if (!currentScene) selectScene(guess);
+    }
+    const insights = generateInsights(m, { isLive: true, motionLevel: motion });
+    renderInsights(insights, { isLive: true });
+  }, 1500);
+}
+
+function stopLiveAnalysis() {
+  if (liveInterval) { clearInterval(liveInterval); liveInterval = null; }
+  prevFrameLum = null;
+  $('liveBadge').style.display = 'none';
+}
+
+/* ============================================================
+   FILE UPLOAD
+   ============================================================ */
+const MAX_UPLOAD_BYTES = 60 * 1024 * 1024;  // 60 MB
+
+function showUploadError(htmlMsg) {
+  $('uploadErrorBody').innerHTML = htmlMsg;
+  $('uploadError').style.display = 'block';
+  $('loadingOverlay').classList.remove('show');
+  const img = $('previewImg');
+  img.classList.remove('show');
+  img.removeAttribute('src');
+  $('previewWrap').classList.add('empty');
+}
+function dismissUploadError() {
+  $('uploadError').style.display = 'none';
+  $('fileInput').value = '';
+}
+function showLoading(text) {
+  $('loadingText').textContent = text;
+  $('loadingOverlay').classList.add('show');
+}
+function hideLoading() {
+  $('loadingOverlay').classList.remove('show');
+}
+
+/* Extract the largest embedded JPEG from a CR2 (Canon RAW) file.
+   CR2 is TIFF-based and contains 2-3 embedded JPEG previews.
+   We scan for FF D8 FF...FF D9 patterns and return the biggest. */
+async function extractJpegFromCR2(file) {
+  const buf = await file.arrayBuffer();
+  const u8 = new Uint8Array(buf);
+  const candidates = [];
+  let i = 0;
+  const len = u8.length;
+  while (i < len - 4) {
+    if (u8[i] === 0xFF && u8[i+1] === 0xD8 && u8[i+2] === 0xFF) {
+      // Found JPEG SOI — scan forward for EOI
+      let j = i + 3;
+      const scanLimit = Math.min(len, i + 40 * 1024 * 1024);  // cap per-JPEG scan at 40MB
+      while (j < scanLimit - 1) {
+        if (u8[j] === 0xFF && u8[j+1] === 0xD9) {
+          candidates.push({ start: i, end: j + 2, size: j - i + 2 });
+          i = j + 2;
+          break;
+        }
+        j++;
+      }
+      if (j >= scanLimit - 1) i++; // didn't find EOI, advance one byte and retry
+    } else {
+      i++;
+    }
+  }
+  if (!candidates.length) throw new Error('No JPEG preview found inside the CR2 file.');
+  candidates.sort((a, b) => b.size - a.size);
+  const best = candidates[0];
+  return new Blob([u8.slice(best.start, best.end)], { type: 'image/jpeg' });
+}
+
+function loadImageFromUrl(url) {
+  const img = $('previewImg');
+  img.onerror = () => {
+    URL.revokeObjectURL(url);
+    hideLoading();
+    showUploadError(
+      `<b>Couldn't display that image.</b><br><br>` +
+      `The file might be corrupted or in an unsupported sub-format. Try:<br>` +
+      `&nbsp;&nbsp;• A different photo (JPEG works best)<br>` +
+      `&nbsp;&nbsp;• Re-exporting from your camera's software<br>` +
+      `&nbsp;&nbsp;• Open this app on iPhone in Safari instead`
+    );
+  };
+  img.onload = () => {
+    URL.revokeObjectURL(url);
+    hideLoading();
+    runAnalysis(img);
+  };
+  img.src = url;
+  img.classList.add('show');
+  $('videoEl').classList.remove('show');
+  $('previewWrap').classList.remove('empty');
+  $('uploadError').style.display = 'none';
+}
+
+$('uploadBtn').onclick = () => $('fileInput').click();
+$('fileInput').onchange = async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  clearAnalysisState();
+
+  const name = (file.name || '').toLowerCase();
+  const type = (file.type || '').toLowerCase();
+  const sizeMB = (file.size / 1024 / 1024).toFixed(1);
+
+  // Size cap
+  if (file.size > MAX_UPLOAD_BYTES) {
+    showUploadError(
+      `<b>File is too large (${sizeMB} MB).</b><br><br>` +
+      `Max upload size is 60 MB. Try:<br>` +
+      `&nbsp;&nbsp;• A JPEG export from your RAW (much smaller)<br>` +
+      `&nbsp;&nbsp;• Resizing the photo to ~3000px on the long edge<br>` +
+      `&nbsp;&nbsp;• Compressing in Preview / Photos before uploading`
+    );
+    return;
+  }
+
+  const isCR2 = name.endsWith('.cr2');
+  const isCR3 = name.endsWith('.cr3');
+  const isARW = name.endsWith('.arw');  // Sony
+  const isNEF = name.endsWith('.nef');  // Nikon
+  const isHeic = type === 'image/heic' || type === 'image/heif' || name.endsWith('.heic') || name.endsWith('.heif');
+
+  // --- CR2 RAW (Canon 80D, etc.) ---
+  if (isCR2) {
+    showLoading(`Reading CR2 RAW (${sizeMB} MB)…`);
+    try {
+      const jpegBlob = await extractJpegFromCR2(file);
+      const url = URL.createObjectURL(jpegBlob);
+      loadImageFromUrl(url);
+    } catch (err) {
+      hideLoading();
+      showUploadError(
+        `<b>Couldn't read that CR2 file.</b><br><br>` +
+        `${err.message}<br><br>` +
+        `Workaround: open it in Canon Digital Photo Professional (DPP) or Adobe Lightroom, then export as JPEG — that always works.`
+      );
+    }
+    return;
+  }
+
+  // --- Unsupported RAW formats ---
+  if (isCR3 || isARW || isNEF) {
+    const fmt = isCR3 ? 'CR3 (newer Canon)' : isARW ? 'ARW (Sony)' : 'NEF (Nikon)';
+    showUploadError(
+      `<b>${fmt} RAW isn't supported yet.</b><br><br>` +
+      `Right now only Canon CR2 (from the 80D and similar) and standard image formats work. Export your RAW as JPEG and re-upload.<br><br>` +
+      `Want me to add ${fmt} support? Just say the word.`
+    );
+    return;
+  }
+
+  // --- HEIC (iPhone default) ---
+  if (isHeic) {
+    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+    if (!isSafari) {
+      showUploadError(
+        `<b>That's a HEIC photo.</b><br><br>` +
+        `iPhone saves HEIC by default, but Chrome/Edge/Firefox can't display it. Three ways to fix:<br><br>` +
+        `<b>Easiest:</b> on your iPhone, go to <i>Settings → Camera → Formats → Most Compatible</i>. Future photos will be JPEG.<br><br>` +
+        `<b>For this photo now:</b> open it in the Photos app on Mac, then File → Export → Export Unmodified Original → JPEG.<br><br>` +
+        `<b>Or:</b> open this app on your iPhone in Safari — Safari can display HEIC natively.`
+      );
+      return;
+    }
+    // Safari can handle HEIC — fall through to normal path
+  }
+
+  // --- Generic image type check ---
+  if (!type.startsWith('image/') && !isHeic) {
+    showUploadError(`<b>That doesn't look like a supported image.</b><br><br>Accepted formats: JPEG, PNG, WebP, GIF, HEIC (Safari only), and Canon CR2 RAW.`);
+    return;
+  }
+
+  // --- Regular image path ---
+  showLoading(`Loading (${sizeMB} MB)…`);
+  const url = URL.createObjectURL(file);
+  loadImageFromUrl(url);
+};
+
+/* ============================================================
+   LIVE CAMERA
+   ============================================================ */
+async function startCamera() {
+  clearAnalysisState();
+  try {
+    const constraints = {
+      video: {
+        facingMode: usingFrontCamera ? 'user' : { ideal: 'environment' },
+        width: { ideal: 1280 },
+        height: { ideal: 960 }
+      },
+      audio: false
+    };
+    if (videoStream) videoStream.getTracks().forEach(t => t.stop());
+    videoStream = await navigator.mediaDevices.getUserMedia(constraints);
+    const v = $('videoEl');
+    v.srcObject = videoStream;
+    v.classList.add('show');
+    $('previewImg').classList.remove('show');
+    $('previewWrap').classList.remove('empty');
+    $('initialControls').style.display = 'none';
+    $('liveControls').style.display = 'grid';
+    // Wait for first frame, then start live analysis
+    v.onloadedmetadata = () => {
+      setTimeout(startLiveAnalysis, 500);
+    };
+  } catch (err) {
+    alert('Could not open camera: ' + err.message + '\n\nTip: this works best on iPhone Safari with HTTPS. You can also use Upload photo instead.');
+  }
+}
+
+function stopCamera() {
+  stopLiveAnalysis();
+  if (videoStream) videoStream.getTracks().forEach(t => t.stop());
+  videoStream = null;
+  $('videoEl').classList.remove('show');
+  $('initialControls').style.display = 'grid';
+  $('liveControls').style.display = 'none';
+}
+
+$('cameraBtn').onclick = startCamera;
+$('cancelCamBtn').onclick = () => {
+  stopCamera();
+  $('previewWrap').classList.add('empty');
+  $('previewImg').classList.remove('show');
+  clearAnalysisState();
+};
+$('flipBtn').onclick = () => {
+  usingFrontCamera = !usingFrontCamera;
+  startCamera();
+};
+$('snapBtn').onclick = () => {
+  const v = $('videoEl');
+  const c = document.createElement('canvas');
+  c.width = v.videoWidth; c.height = v.videoHeight;
+  c.getContext('2d').drawImage(v, 0, 0);
+  const dataUrl = c.toDataURL('image/jpeg', 0.9);
+  const img = $('previewImg');
+  img.src = dataUrl;
+  img.classList.add('show');
+  img.onload = () => {
+    stopCamera();
+    runAnalysis(img);
+  };
+};
+
+/* ============================================================
+   RESET
+   ============================================================ */
+$('resetBtn').onclick = () => {
+  currentScene = null;
+  autoSuggested = null;
+  $('previewImg').classList.remove('show');
+  $('previewImg').src = '';
+  $('previewWrap').classList.add('empty');
+  $('autoBanner').classList.remove('show');
+  $('results').classList.remove('show');
+  $('insightsPanel').classList.remove('show');
+  $('fileInput').value = '';
+  renderChips();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+};
+
+/* ============================================================
+   INIT
+   ============================================================ */
+loadDevicePrefs();
+updateGearPill();
+renderChips();
+
+// First-visit prompt — open device picker if no saved selection
+let firstVisit = false;
+try { firstVisit = !localStorage.getItem('sc_phone'); } catch (e) {}
+if (firstVisit) {
+  setTimeout(openDevicePicker, 300);
+}
+</script>
+</body>
+</html>
